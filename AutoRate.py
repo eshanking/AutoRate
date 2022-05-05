@@ -2,7 +2,15 @@ import pandas as pd
 import os
 
 class Experiment():
+    """Experiment class for a given plate reader experiment
+    """
     def __init__(self,folder_path,moat=False):
+        """Initializer
+
+        Args:
+            folder_path (str): path of plate reader data
+            moat (bool, optional): If true, assumes the outer row of the plate is a moat. Defaults to False.
+        """
         self.moat = moat
         self.folder_path = folder_path
         self.plate_data_paths = self.load_plate_data()
@@ -12,6 +20,11 @@ class Experiment():
             self.plates.append(Plate(pdp))
 
     def load_plate_data(self):
+        """Gets plate data paths
+
+        Returns:
+            list: list of plate data paths
+        """
         plate_files = sim_files = os.listdir(path=self.folder_path)
         plate_files.sort()
 
@@ -26,10 +39,16 @@ class Experiment():
 
 
 class Plate():
+    """96-well plate object
+    """
     def __init__(self,data_path,moat=False):
+        """Initializer
 
+        Args:
+            data_path (str): csv file path
+            moat (bool, optional): If true, assumes the outer row of the plate is a moat. Defaults to False.
+        """
         self.moat = moat
-        # print(data_path)
         self.data = pd.read_csv(data_path)
 
         self.background_keys = self.get_background_keys()
