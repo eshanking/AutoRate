@@ -1,6 +1,7 @@
 import pandas as pd
 import os
 import scipy.optimize as sciopt
+import scipy.interpolate as sciinter
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -35,7 +36,10 @@ class Experiment():
             self.drug_conc = drug_conc
 
         for pdp in self.plate_data_paths:
-            self.plates.append(Plate(pdp,self.drug_conc,debug=debug))
+            self.plates.append(Plate(pdp,self.drug_conc,debug=debug,moat=moat))
+        
+        self.growth_rate_lib = self.gen_growth_rate_lib()
+        self.seascape_lib = self.gen_seascape_lib()
         
 
 
@@ -58,10 +62,135 @@ class Experiment():
         return plate_data_paths
     
     def gen_growth_rate_lib(self):
-        return
+        """Generates the complete growth rate library by compining the growth rate libraries of each plate
+
+        Returns:
+            dict: growth rate library
+        """
+        gl = {}
+        offset = 0
+        for p in self.plates:
+            
+            for k in p.growth_rate_lib.keys():
+
+                rep_num = int(k)
+                gl[str(rep_num+offset)] = p.growth_rate_lib[k]
+                print(str(rep_num+offset))
+            keys = [int(k) for k in p.growth_rate_lib.keys()]
+            offset += max(keys)
+
+        return gl
     
     def gen_seascape_lib(self):
-        return
+        """Fits raw estimated growth rate values to a Hill dose-response curve
+
+        Args:
+            pop (population class object, optional): population class object. Defaults to None.
+            debug (bool, optional): generates plots useful for debugging if true. Defaults to False.
+
+        Raises:
+            ValueError: raises error if there is no growth rate library in the population class
+
+        Returns:
+            dict: seascape library
+        """
+
+
+        if not 'growth_rate_lib' in self.__dict__:
+            raise ValueError('No growth rate library in population.')
+        else:
+            gl = self.growth_rate_lib
+        
+        sl = {}
+        dc = self.drug_conc
+
+        replicates = [int(k) for k in self.growth_rate_lib.keys()]
+        
+        for r in replicates:
+
+            popt = self.fit_hill_curve(dc,gl[str(r)])
+            ic50 = popt[0]
+            g_drugless = popt[1]
+            hill_coeff = popt[2]
+            d_t = {'ic50':ic50,
+                'g_drugless':g_drugless,
+                'hill_coeff':hill_coeff}
+
+            sl[str(r)] = d_t
+
+        return sl
+
+    def fit_hill_curve(self,xdata,ydata,debug=False):
+
+        # interpolate data
+        xd_t = xdata
+        yd_t = ydata
+        f = sciinter.interp1d(xdata,ydata)
+
+        if min(xdata) == 0:
+            xmin = np.log10(xdata[1])
+        else:
+            xmin = np.log10(min(xdata))
+        xmax = np.log10(max(xdata))
+
+        xdata = np.logspace(xmin,xmax)
+        if not xdata[0] == 0:
+            xdata = np.insert(xdata,0,0)
+
+        ydata = f(xdata)
+
+        
+        p0 = [0,ydata[0],-0.08]
+
+        if ydata[0] == 0:
+            g_drugless_bound = [0,1]
+        else:
+            # want the estimated drugless growth rate to be very close to the value given in ydata
+            g_drugless_bound = [ydata[0]-0.0001*ydata[0],ydata[0]+0.0001*ydata[0]]
+
+        bounds = ([-5,g_drugless_bound[0],-1],[4,g_drugless_bound[1],-0.001])
+        popt, pcov = sciopt.curve_fit(self.logistic_pharm_curve_vectorized,
+                                            xdata,ydata,p0=p0,bounds=bounds)
+
+        if debug:
+            est = [self.logistic_pharm_curve(x,popt[0],popt[1],popt[2]) for x in xdata]
+            fig,ax = plt.subplots()
+            ax.plot(xd_t,yd_t)
+            ax.plot(xdata,ydata)
+            ax.plot(xdata,est)
+            ax.set_xscale('log')
+            ax.set_title('IC50 = ' + str(popt[0]))
+
+        return popt
+    
+    def logistic_pharm_curve_vectorized(self,x,IC50,g_drugless,hill_coeff):
+        """Defines the logistic dose-response curve. Use if the input is a vector of drug concentration curves
+
+        Args:
+            x (numpy array): drug concentration vector
+            IC50 (float)): IC50
+            g_drugless (float): drugless growth rate
+            hill_coeff (float): Hill coefficient
+
+        Returns:
+            numpy array: array of growth rates
+        """
+        g = []
+
+        for x_t in x:
+            if x_t == 0:
+                g.append(g_drugless)
+            else:
+                g.append(g_drugless/(1+np.exp((IC50-np.log10(x_t))/hill_coeff)))
+
+        return g
+
+    def save_results(self):
+        seascape_df = pd.DataFrame.from_dict(self.seascape_lib)
+        growth_rate_df = pd.DataFrame.from_dict(self.growth_rate_lib)
+
+        seascape_df.to_csv(path_or_buf='sl.csv')
+        growth_rate_df.to_csv(path_or_buf='gr.csv')
 
 
 class Plate():
