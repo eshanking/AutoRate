@@ -11,7 +11,8 @@ setup(
       "pytest",
       "scipy",
       "matplotlib",
-      "numpy"
+      "numpy",
+      "importlib_resources"
     ],
     include_package_data=True,
     package_data={'': ['data/*.csv']}
