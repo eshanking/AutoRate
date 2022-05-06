@@ -31,6 +31,8 @@ class Experiment():
         self.plate_data_paths = self.load_plate_data()
         self.plates = []
         self.units = units
+        self.debug = debug
+
         if drug_conc is None:
             self.drug_conc = [0,0.003,0.0179,0.1072,0.643,3.858,23.1481,138.8889,833.3333,5000]
         else:
@@ -80,7 +82,7 @@ class Experiment():
 
                 rep_num = int(k)
                 gl[str(rep_num+offset)] = p.growth_rate_lib[k]
-                print(str(rep_num+offset))
+                #print(str(rep_num+offset))
             keys = [int(k) for k in p.growth_rate_lib.keys()]
             offset += max(keys)
 
