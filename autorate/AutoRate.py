@@ -36,9 +36,11 @@ class Experiment():
         else:
             self.drug_conc = drug_conc
 
+        # get plate data paths
         for pdp in self.plate_data_paths:
             self.plates.append(Plate(pdp,self.drug_conc,debug=debug,moat=moat))
         
+        # compute growth rate and seascape libraries
         self.growth_rate_lib = self.gen_growth_rate_lib()
         self.seascape_lib = self.gen_seascape_lib()
         
