@@ -1,6 +1,7 @@
 import autorate.AutoRate as AutoRate
 import pytest
 
-folder_path = '/Users/kinge2/repos/AutoRate/test_data'
+exp = AutoRate.Experiment(folder_path,debug=False,moat=True)
 
-exp = AutoRate.Experiment(folder_path)
+p = exp.plates[0]
+gl = p.gen_growth_rate_lib()

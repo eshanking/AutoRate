@@ -1,0 +1,10 @@
+README.md
+setup.py
+autorate/AutoRate.py
+autorate/__init__.py
+autorate/test/test_autorate.py
+evodm.egg-info/PKG-INFO
+evodm.egg-info/SOURCES.txt
+evodm.egg-info/dependency_links.txt
+evodm.egg-info/requires.txt
+evodm.egg-info/top_level.txt

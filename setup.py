@@ -1,10 +1,10 @@
 from setuptools import setup
 
 setup(
-    name='evodm', 
-    version='1.0.0', 
-    author = 'Davis Weaver', 
-    author_email = 'dtw43@case.edu',
+    name='autorate', 
+    version='0.1.0', 
+    author = 'Eshan King', 
+    author_email = '',
     packages=['autorate', "autorate.test"], 
     install_requires = [
       "pandas",
