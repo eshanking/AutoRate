@@ -5,9 +5,11 @@ setup(
     version='0.1.0', 
     author = 'Eshan King', 
     author_email = '',
-    packages=['autorate', "autorate.test"], 
+    packages=['autorate', "autorate.test", "autorate.test.data"], 
     install_requires = [
       "pandas",
       "pytest"
     ],
+    include_package_data=True,
+    package_data={'': ['data/*.csv']}
 )

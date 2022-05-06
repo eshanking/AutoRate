@@ -8,3 +8,4 @@ autorate.egg-info/dependency_links.txt
 autorate.egg-info/requires.txt
 autorate.egg-info/top_level.txt
 autorate/test/test_autorate.py
+autorate/test/data/__init__.py
