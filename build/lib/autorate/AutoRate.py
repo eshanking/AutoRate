@@ -21,7 +21,8 @@ class Experiment():
             folder_path (str): path of plate reader data
             moat (bool, optional): If true, assumes the outer row of the plate is a moat. Defaults to False.
             replicate_arrangement (str, optional): Determines if replicates are arranged in rows or columns. Defaults to rows.
-            drug_conc (list, optional): Drug concentrations corresponding to the drug diluation scheme. If none, defaults to [0,0.003,0.0179,0.1072,0.643,3.858,23.1481,138.8889,833.3333,5000].
+            drug_conc (list, optional): Drug concentrations corresponding to the drug diluation scheme. If none, defaults to 
+            [0,0.003,0.0179,0.1072,0.643,3.858,23.1481,138.8889,833.3333,5000].
             units (str, optional): Drug concentration units. Defaults to ug/mL
         """
         self.moat = moat
@@ -30,6 +31,8 @@ class Experiment():
         self.plate_data_paths = self.load_plate_data()
         self.plates = []
         self.units = units
+        self.debug = debug
+
         if drug_conc is None:
             self.drug_conc = [0,0.003,0.0179,0.1072,0.643,3.858,23.1481,138.8889,833.3333,5000]
         else:
@@ -50,6 +53,10 @@ class Experiment():
             list: list of plate data paths
         """
         plate_files = os.listdir(path=self.folder_path)
+
+        #Need to make sure we are only attempting to load .csv data
+        plate_files = [i for i in plate_files if '.csv' in i]
+
         plate_files.sort()
 
         plate_data_paths = []
@@ -75,7 +82,7 @@ class Experiment():
 
                 rep_num = int(k)
                 gl[str(rep_num+offset)] = p.growth_rate_lib[k]
-                print(str(rep_num+offset))
+                #print(str(rep_num+offset))
             keys = [int(k) for k in p.growth_rate_lib.keys()]
             offset += max(keys)
 
@@ -89,7 +96,7 @@ class Experiment():
             debug (bool, optional): generates plots useful for debugging if true. Defaults to False.
 
         Raises:
-            ValueError: raises error if there is no growth rate library in the population class
+            ValueError: raises error if there is no growth rate library in the experiment object
 
         Returns:
             dict: seascape library
@@ -120,8 +127,16 @@ class Experiment():
 
         return sl
 
-    def fit_hill_curve(self,xdata,ydata,debug=False):
+    def fit_hill_curve(self,xdata,ydata):
+        """Fits dose-response curve to growth rate data
 
+        Args:
+            xdata (list or numpy array): drug concentration curve from plate experiment
+            ydata (list or numpy array): growth rate versus drug concetration for a given replicate
+
+        Returns:
+            list: List of optimized paramters: IC50, drugless growth rate, and Hill coefficient
+        """
         # interpolate data
         xd_t = xdata
         yd_t = ydata
@@ -152,7 +167,7 @@ class Experiment():
         popt, pcov = sciopt.curve_fit(self.logistic_pharm_curve_vectorized,
                                             xdata,ydata,p0=p0,bounds=bounds)
 
-        if debug:
+        if self.debug:
             est = [self.logistic_pharm_curve(x,popt[0],popt[1],popt[2]) for x in xdata]
             fig,ax = plt.subplots()
             ax.plot(xd_t,yd_t)
@@ -217,7 +232,7 @@ class Plate():
         self.growth_rate_lib = self.gen_growth_rate_lib()
 
     def get_background_keys(self):
-        """Gets the dataframe keys for the background
+        """Gets the dataframe keys for the background (aka moat)
 
         Returns:
             list: list of background keys
@@ -323,7 +338,11 @@ class Plate():
         return growth_rates
 
     def gen_growth_rate_lib(self):
-        
+        """Generates growth rate library from OD data
+
+        Returns:
+            dict: Dict of dose-response curves indexed by replicate
+        """
         growth_rates = self.get_growth_rates_from_df()
         replicate_num = 0
         growth_rate_lib = {}
