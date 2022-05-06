@@ -28,7 +28,7 @@ class Experiment():
         self.moat = moat
         self.folder_path = folder_path
         self.replicate_arrangement = replicate_arrangement
-        self.plate_data_paths = self.load_plate_data()
+        self.plate_data_paths = self.get_plate_data_paths()
         self.plates = []
         self.units = units
         self.debug = debug
@@ -48,7 +48,7 @@ class Experiment():
         
 
 
-    def load_plate_data(self):
+    def get_plate_data_paths(self):
         """Gets plate data paths
 
         Returns:
@@ -56,8 +56,8 @@ class Experiment():
         """
         plate_files = os.listdir(path=self.folder_path)
 
-        #Need to make sure we are only attempting to load .csv data
-        plate_files = [i for i in plate_files if '.csv' in i]
+        #Need to make sure we are only attempting to load .csv or .xlsx data
+        plate_files = [i for i in plate_files if ('.csv' in i) or ('.xlsx' in i)]
 
         plate_files.sort()
 
@@ -232,6 +232,17 @@ class Plate():
         self.drug_conc = drug_conc
         self.debug = debug
         self.growth_rate_lib = self.gen_growth_rate_lib()
+
+    def parse_data_file(self,p):
+        
+        if '.csv' in p:
+            df = pd.read_csv(p)
+        elif '.xlsx' in p:
+            df = pd.read_excel(p)
+
+        
+
+        return df
 
     def get_background_keys(self):
         """Gets the dataframe keys for the background (aka moat)
