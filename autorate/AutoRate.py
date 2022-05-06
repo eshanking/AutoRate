@@ -51,6 +51,10 @@ class Experiment():
             list: list of plate data paths
         """
         plate_files = os.listdir(path=self.folder_path)
+
+        #Need to make sure we are only attempting to load .csv data
+        plate_files = [i for i in plate_files if '.csv' in i]
+
         plate_files.sort()
 
         plate_data_paths = []
