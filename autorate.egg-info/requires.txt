@@ -3,3 +3,4 @@ pytest
 scipy
 matplotlib
 numpy
+importlib_resources
