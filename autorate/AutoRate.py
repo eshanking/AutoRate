@@ -28,7 +28,7 @@ class Experiment():
         self.moat = moat
         self.folder_path = folder_path
         self.replicate_arrangement = replicate_arrangement
-        self.plate_data_paths = self.get_plate_data_paths()
+        
         self.plates = []
         self.units = units
         self.debug = debug
@@ -38,15 +38,20 @@ class Experiment():
         else:
             self.drug_conc = drug_conc
 
+        
+    def execute(self):
+        """run the growth rate analyses
+        """
+        
+        self.plate_data_paths = self.get_plate_data_paths()
+
         # get plate data paths
         for pdp in self.plate_data_paths:
-            self.plates.append(Plate(pdp,self.drug_conc,debug=debug,moat=moat))
+            self.plates.append(Plate(pdp,self.drug_conc,debug=self.debug,moat=self.moat))
         
         # compute growth rate and seascape libraries
         self.growth_rate_lib = self.gen_growth_rate_lib()
         self.seascape_lib = self.gen_seascape_lib()
-        
-
 
     def get_plate_data_paths(self):
         """Gets plate data paths
@@ -260,6 +265,10 @@ class Plate():
         
         # raw data starts after cycle nr.
         data_start_indx = np.argwhere(time_array == 'Cycle Nr.')
+        
+        #sometimes the data gets passed in very unraw
+        if len(data_start_indx) == 0:
+            return df 
 
         data_start_indx = data_start_indx[0][0]
 

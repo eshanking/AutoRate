@@ -28,7 +28,7 @@ class Experiment():
         self.moat = moat
         self.folder_path = folder_path
         self.replicate_arrangement = replicate_arrangement
-        self.plate_data_paths = self.load_plate_data()
+        self.plate_data_paths = self.get_plate_data_paths()
         self.plates = []
         self.units = units
         self.debug = debug
@@ -38,15 +38,17 @@ class Experiment():
         else:
             self.drug_conc = drug_conc
 
+        # get plate data paths
         for pdp in self.plate_data_paths:
             self.plates.append(Plate(pdp,self.drug_conc,debug=debug,moat=moat))
         
+        # compute growth rate and seascape libraries
         self.growth_rate_lib = self.gen_growth_rate_lib()
         self.seascape_lib = self.gen_seascape_lib()
         
 
 
-    def load_plate_data(self):
+    def get_plate_data_paths(self):
         """Gets plate data paths
 
         Returns:
@@ -54,8 +56,8 @@ class Experiment():
         """
         plate_files = os.listdir(path=self.folder_path)
 
-        #Need to make sure we are only attempting to load .csv data
-        plate_files = [i for i in plate_files if '.csv' in i]
+        #Need to make sure we are only attempting to load .csv or .xlsx data
+        plate_files = [i for i in plate_files if ('.csv' in i) or ('.xlsx' in i)]
 
         plate_files.sort()
 
@@ -222,14 +224,58 @@ class Plate():
             debug (bool, optional): If true, plots growth curve and estimated growth curve. Defaults to False.
         """
         self.moat = moat
-        self.data = pd.read_csv(data_path)
+        self.data_path = data_path
+        self.data = self.parse_data_file(data_path)
+
+        if drug_conc is None:
+            self.drug_conc = [0,0.003,0.0179,0.1072,0.643,3.858,23.1481,138.8889,833.3333,5000]
+        else:
+            self.drug_conc = drug_conc
 
         self.background_keys = self.get_background_keys()
         self.data_keys = self.get_data_keys()
         self.replicate_arrangement = replicate_arrangement
-        self.drug_conc = drug_conc
         self.debug = debug
         self.growth_rate_lib = self.gen_growth_rate_lib()
+
+    def parse_data_file(self,p):
+        """Strips metadata from raw data file to obtain timeseries OD data
+
+        Args:
+            p (str): path to data file
+
+        Returns:
+            pandas dataframe: dataframe of raw data
+        """
+        
+        # load csv or xlsx
+        if '.csv' in p:
+            df = pd.read_csv(p)
+        elif '.xlsx' in p:
+            df = pd.read_excel(p)
+
+        # get the first column of the data
+        time_col = df[df.keys()[0]]
+        time_array = np.array(time_col)
+        
+        # raw data starts after cycle nr.
+        data_start_indx = np.argwhere(time_array == 'Cycle Nr.')
+
+        data_start_indx = data_start_indx[0][0]
+
+        # filter header from raw data file
+        df_filt = df.loc[data_start_indx:,:]
+        # change the column names
+        df_filt.columns = df_filt.iloc[0]
+        df_filt = df_filt.drop(df_filt.index[0])
+
+        # find data end and filter empty cells
+        time_col = df_filt[df_filt.keys()[0]]
+        x = pd.isna(time_col)
+        data_end_indx = x[x].index[0]
+        df_filt = df_filt.loc[:data_end_indx-1,:]
+
+        return df_filt
 
     def get_background_keys(self):
         """Gets the dataframe keys for the background (aka moat)
@@ -268,9 +314,28 @@ class Plate():
         else:
             data_keys = [k for k in self.data.keys() if k not in self.background_keys]
         
-        data_keys = data_keys[2:]
+        data_keys = [k for k in data_keys if self.check_if_key_is_well(k)]
 
         return data_keys
+
+    def check_if_key_is_well(self,key):
+        """Checks if key could refer to a well (i.e. key is in format 'X##' where X is a letter and # are numbers)
+           For instance, returns True is key is 'A11', returns False if key is 'Time (s)' 
+
+        Args:
+            key str: key to check
+
+        Returns:
+            boolean: True if key could refer to a well, False if other.
+        """
+        isKey = False
+
+        if len(key) <= 3 and len(key) > 1:
+            if key[0].isalpha():
+                if key[1:].isdigit():
+                    isKey = True
+
+        return isKey
     
     def est_growth_rate(self,growth_curve,t=None):
         """Estimates growth rate from OD growth curve
@@ -333,7 +398,9 @@ class Plate():
         time = df['Time [s]']
 
         for k in data_keys:
-            growth_rates[k] = self.est_growth_rate(df[k],t=time)
+            gr = np.array(df[k]) # growth rate time series data
+            time = np.array(time) # time vector
+            growth_rates[k] = self.est_growth_rate(gr,t=time)
 
         return growth_rates
 
