@@ -263,7 +263,8 @@ class Plate():
         elif '.xlsx' in p:
             df = pd.read_excel(p)
 
-        # get the first column of the data
+        # get the first column (leftmost) of the data
+        # cycle nr is always in the leftmost column
         time_col = df[df.keys()[0]]
         time_array = np.array(time_col)
         
@@ -278,6 +279,7 @@ class Plate():
 
         # filter header from raw data file
         df_filt = df.loc[data_start_indx:,:]
+
         # change the column names
         df_filt.columns = df_filt.iloc[0]
         df_filt = df_filt.drop(df_filt.index[0])
@@ -301,7 +303,14 @@ class Plate():
         if self.moat:
             k = self.data.keys()
 
-            k = k[2:] #magic number hello! 
+            # filter out keys that don't refer to wells
+            k_filt = []
+            for key in k:
+                if self.check_if_key_is_well(key):
+                    k_filt.append(key)
+
+            k = k_filt
+
             bg_keys = [y for y in k if int(y[1:]) == 1] # col 1
             bg_keys = bg_keys + [y for y in k if (int(y[1:]) == 12 and y not in bg_keys)]
             bg_keys = bg_keys + [y for y in k if (y[0] == 'A' and y not in bg_keys)]
@@ -321,7 +330,6 @@ class Plate():
         Returns:
             list: list of keys
         """
-        bg_keys = self.get_background_keys()
         if self.background_keys is None:
             data_keys = self.data.keys()
         else:
