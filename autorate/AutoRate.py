@@ -47,8 +47,9 @@ class Experiment():
 
         # get plate data paths
         for pdp in self.plate_data_paths:
-            plate_pdp = Plate(pdp,self.drug_conc,debug=self.debug,moat=self.moat)
-            self.plates.append(plate_pdp.execute())
+            p = Plate(pdp,self.drug_conc,debug=self.debug,moat=self.moat)
+            p.execute()
+            self.plates.append(p)
         
         # compute growth rate and seascape libraries
         self.growth_rate_lib = self.gen_growth_rate_lib()
