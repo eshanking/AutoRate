@@ -47,7 +47,8 @@ class Experiment():
 
         # get plate data paths
         for pdp in self.plate_data_paths:
-            self.plates.append(Plate(pdp,self.drug_conc,debug=self.debug,moat=self.moat))
+            plate_pdp = Plate(pdp,self.drug_conc,debug=self.debug,moat=self.moat)
+            self.plates.append(plate_pdp.execute())
         
         # compute growth rate and seascape libraries
         self.growth_rate_lib = self.gen_growth_rate_lib()
@@ -237,10 +238,13 @@ class Plate():
         else:
             self.drug_conc = drug_conc
 
-        self.background_keys = self.get_background_keys()
-        self.data_keys = self.get_data_keys()
         self.replicate_arrangement = replicate_arrangement
         self.debug = debug
+
+    def execute(self):
+
+        self.background_keys = self.get_background_keys()
+        self.data_keys = self.get_data_keys()
         self.growth_rate_lib = self.gen_growth_rate_lib()
 
     def parse_data_file(self,p):
@@ -297,7 +301,7 @@ class Plate():
         if self.moat:
             k = self.data.keys()
 
-            k = k[2:]
+            k = k[2:] #magic number hello! 
             bg_keys = [y for y in k if int(y[1:]) == 1] # col 1
             bg_keys = bg_keys + [y for y in k if (int(y[1:]) == 12 and y not in bg_keys)]
             bg_keys = bg_keys + [y for y in k if (y[0] == 'A' and y not in bg_keys)]
