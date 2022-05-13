@@ -125,9 +125,16 @@ class Experiment():
         for r in replicates:
 
             popt = self.fit_hill_curve(dc,gl[str(r)])
-            ic50 = popt[0]
-            g_drugless = popt[1]
-            hill_coeff = popt[2]
+            
+            # inidices of optimized parameter vector
+            ic50_indx = 0
+            g_drugless_indx = 1
+            hill_coeff_indx = 2
+
+            ic50 = popt[ic50_indx]
+            g_drugless = popt[g_drugless_indx]
+            hill_coeff = popt[hill_coeff_indx]
+
             d_t = {'ic50':ic50,
                 'g_drugless':g_drugless,
                 'hill_coeff':hill_coeff}
@@ -152,16 +159,16 @@ class Experiment():
         f = sciinter.interp1d(xdata,ydata)
 
         if min(xdata) == 0:
-            xmin = np.log10(xdata[1])
+            xmin = np.log10(xdata[1]) # if xdata starts at zero, set the new xmin to be the log of the next smallest value
         else:
             xmin = np.log10(min(xdata))
         xmax = np.log10(max(xdata))
 
         xdata = np.logspace(xmin,xmax)
         if not xdata[0] == 0:
-            xdata = np.insert(xdata,0,0)
+            xdata = np.insert(xdata,0,0) # add zero back to xdata if removed before (because of log(0) error)
 
-        ydata = f(xdata)
+        ydata = f(xdata) # interpolate new ydata points
 
         
         p0 = [0,ydata[0],-0.08]
@@ -172,7 +179,8 @@ class Experiment():
             # want the estimated drugless growth rate to be very close to the value given in ydata
             g_drugless_bound = [ydata[0]-0.0001*ydata[0],ydata[0]+0.0001*ydata[0]]
 
-        bounds = ([-5,g_drugless_bound[0],-1],[4,g_drugless_bound[1],-0.001])
+        bounds = ([-5,g_drugless_bound[0],-1],[4,g_drugless_bound[1],-0.001]) # these aren't magic numbers these are just starting parameters that happen to work
+
         popt, pcov = sciopt.curve_fit(self.logistic_pharm_curve_vectorized,
                                             xdata,ydata,p0=p0,bounds=bounds)
 
@@ -274,22 +282,23 @@ class Plate():
         
         #sometimes the data gets passed in very unraw
         if len(data_start_indx) == 0:
-            return df 
+            return df
 
-        data_start_indx = data_start_indx[0][0]
+        data_start_indx = data_start_indx[0][0] # get scalar from numpy array
 
         # filter header from raw data file
         df_filt = df.loc[data_start_indx:,:]
 
         # change the column names
-        df_filt.columns = df_filt.iloc[0]
-        df_filt = df_filt.drop(df_filt.index[0])
+        df_filt.columns = df_filt.iloc[0] # get the top row from the dataframe and make it the column names
+        df_filt = df_filt.drop(df_filt.index[0]) # remove the top row from the dataframe
 
         # find data end and filter empty cells
-        time_col = df_filt[df_filt.keys()[0]]
-        x = pd.isna(time_col)
-        data_end_indx = x[x].index[0]
-        df_filt = df_filt.loc[:data_end_indx-1,:]
+        first_col = df_filt[df_filt.keys()[0]] # get the first column of data
+        x = pd.isna(first_col) # find where na occurs (empty cell)
+        data_end_indx = x[x].index[0] 
+
+        df_filt = df_filt.loc[:data_end_indx-1,:] # filter out the empty cells
 
         return df_filt
 
@@ -312,8 +321,13 @@ class Plate():
 
             k = k_filt
 
-            bg_keys = [y for y in k if int(y[1:]) == 1] # col 1
-            bg_keys = bg_keys + [y for y in k if (int(y[1:]) == 12 and y not in bg_keys)]
+            # this block of code defines the outer ring of a 96-well plate
+
+            first_plate_col = 1 #first column of the plate
+            last_plate_col = 12 #last column of the plate
+
+            bg_keys = [y for y in k if int(y[1:]) == first_plate_col] # col 1
+            bg_keys = bg_keys + [y for y in k if (int(y[1:]) == last_plate_col and y not in bg_keys)]
             bg_keys = bg_keys + [y for y in k if (y[0] == 'A' and y not in bg_keys)]
             bg_keys = bg_keys + [y for y in k if (y[0] == 'H' and y not in bg_keys)]
         
@@ -352,9 +366,12 @@ class Plate():
         """
         isKey = False
 
-        if len(key) <= 3 and len(key) > 1:
-            if key[0].isalpha():
-                if key[1:].isdigit():
+        max_key_length = 3
+        min_key_length = 2
+
+        if len(key) <= max_key_length and len(key) >= min_key_length:
+            if key[0].isalpha(): # is the first element a letter?
+                if key[1:].isdigit(): # is the last element (or last two elements) a number?
                     isKey = True
 
         return isKey
@@ -378,13 +395,22 @@ class Plate():
         popt, pcov = sciopt.curve_fit(self.logistic_growth_curve,
                                             t,growth_curve,p0=p0,
                                             bounds=(0,1))
+        
+        rate_indx = 0 # index of the optimized data points referring to the growth rate
+        p0_indx = 1 # index of the optimized data points referring to initial population size
+        carrying_cap_indx = 2 # index of the optmized data points referring to carrying capacity
 
-        r = popt[0]
-        if r < 0:
+        r = popt[rate_indx]
+        p0 = popt[p0_indx]
+        cc = popt[carrying_cap_indx]
+
+        min_carrying_cap = 0.1
+
+        if r < 0: # if the growth rate is negative
             r = 0
-        if popt[2] < popt[1]: # if the carrying capacity is less than the initial population size
+        if cc < p0: # if the carrying capacity is less than the initial population size
             r = 0
-        if popt[2] < 0.1:
+        if cc < min_carrying_cap: # if the carrying cap is less the minimum threshold
             r = 0
         
         if self.debug:
