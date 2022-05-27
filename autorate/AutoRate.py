@@ -196,7 +196,8 @@ class Experiment():
         return popt
     
     def logistic_pharm_curve_vectorized(self,x,IC50,g_drugless,hill_coeff):
-        """Defines the logistic dose-response curve. Use if the input is a vector of drug concentration curves
+        """
+        Defines the logistic dose-response curve. Use if the input is a vector of drug concentration curves
 
         Args:
             x (numpy array): drug concentration vector
@@ -520,3 +521,34 @@ class Plate():
         p = k/(1+((k-p0)/p0)*np.exp(-r*t))
 
         return p
+
+def run_autorate(folder_path,
+                 moat=False,
+                 replicate_arrangement='rows',
+                 drug_conc = None,
+                 units = 'ug/mL',
+                 debug=False):
+    """convenience wrapper for autorate functionality
+
+   Args:
+        folder_path (str): path of plate reader data
+        moat (bool, optional): If true, assumes the outer row of the plate is a moat. Defaults to False.
+        replicate_arrangement (str, optional): Determines if replicates are arranged in rows or columns. Defaults to rows.
+        drug_conc (list, optional): Drug concentrations corresponding to the drug diluation scheme. If none, defaults to 
+        [0,0.003,0.0179,0.1072,0.643,3.858,23.1481,138.8889,833.3333,5000].
+        units (str, optional): Drug concentration units. Defaults to ug/mL
+
+    Returns:
+        float: population size at time t
+    """
+
+    exp = Experiment(folder_path=folder_path,
+                     debug=debug,
+                     moat=moat,
+                     replicate_arrangement=replicate_arrangement,
+                     drug_conc=drug_conc,
+                     units=units)
+    exp.execute()
+
+    
+    return key_ouput

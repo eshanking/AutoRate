@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name='autorate', 
     version='0.1.0', 
-    author = 'Eshan King', 
+    author = 'Eshan King,  Davis Weaver', 
     author_email = '',
     packages=['autorate', "autorate.test", "autorate.test.data"], 
     install_requires = [
